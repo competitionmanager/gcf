@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const dateFormat = require('dateformat');
 admin.initializeApp();
 
 // Get Firestore database handle
@@ -33,19 +34,19 @@ async function sendNotification(token, message)
   return Promise.all(tokensToRemove);
 }
 
-async function getTokenAndNotify(follower, message)
+async function getTokenAndNotify(subscriber, message)
 {
-  const documentPath = `users/${follower}`;
+  const documentPath = `users/${subscriber}`;
   const document = db.doc(documentPath);
   console.log(`Getting token from document path: ${documentPath}`);
   try {
     let query = await document.get();
     if (!query.exists) {
-      console.log(`${follower} does not exist in users.`);
+      console.log(`${subscriber} does not exist in users.`);
     }
     else {
       let token = query.get("token");
-      console.log("user", follower, "token", token);
+      console.log("user", subscriber, "token", token);
       return sendNotification(token, message);
     }
   }
@@ -57,9 +58,9 @@ async function getTokenAndNotify(follower, message)
 async function handleTimeUpdate(message, newData)
 {
   console.log(message);
-  const followers = newData["followers"];
-  for (let follower of followers) {
-    getTokenAndNotify(follower, message);
+  const subscribers = newData["subscribers"];
+  for (let subscriber of subscribers) {
+    getTokenAndNotify(subscriber, message);
   }
 }
 
@@ -75,14 +76,9 @@ exports.handleEventUpdate = functions.firestore
       // Check for changes in startTime
       if (oldData["startTime"].toDate().getTime() !== newData["startTime"].toDate().getTime()) {
         const newDataStartTime = newData["startTime"].toDate();
-        const message = `The starttime for ${newData["name"]} has been changed to: ${newDataStartTime}`;
-        handleTimeUpdate(message, newData);
-      }
+        const oldDateStartTime = oldData["startTime"].toDate();
 
-      // Check for changes in endTime
-      if (oldData["endTime"].toDate().getTime() !== newData["endTime"].toDate().getTime()) {
-        const newDataEndTime = newData["endTime"].toDate();
-        const message = `The end time for ${newData["name"]} has been changed to: ${newDataEndTime}`;
+        const message = `The start time for ${newData["name"]} has been changed from ${dateFormat(oldDateStartTime, "hh:MM")} to ${dateFormat(newDataStartTime, "hh:MM")}`;
         handleTimeUpdate(message, newData);
       }
       return 0;
