@@ -7,10 +7,9 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Firebase Cloud Messaging
-async function sendNotification(token, message)
-{
+async function sendNotification(token, message) {
   const payload = {
-    notification :{
+    notification: {
       title: 'Event Update',
       body: message,
     }
@@ -26,7 +25,7 @@ async function sendNotification(token, message)
       console.error('Failure sending notification to', token, error);
       // Cleanup the tokens who are not registered anymore.
       if (error.code === 'messaging/invalid-registration-token' ||
-          error.code === 'messaging/registration-token-not-registered') {
+        error.code === 'messaging/registration-token-not-registered') {
         tokensToRemove.push(tokensSnapshot.ref.child(tokens).remove());
       }
     }
@@ -34,8 +33,7 @@ async function sendNotification(token, message)
   return Promise.all(tokensToRemove);
 }
 
-async function getTokenAndNotify(subscriber, message)
-{
+async function getTokenAndNotify(subscriber, message) {
   const documentPath = `users/${subscriber}`;
   const document = db.doc(documentPath);
   console.log(`Getting token from document path: ${documentPath}`);
@@ -55,8 +53,7 @@ async function getTokenAndNotify(subscriber, message)
   }
 }
 
-async function handleTimeUpdate(message, newData)
-{
+async function handleTimeUpdate(message, newData) {
   console.log(message);
   const subscribers = newData["subscribers"];
   for (let subscriber of subscribers) {
@@ -66,20 +63,47 @@ async function handleTimeUpdate(message, newData)
 
 // Listen for any change in collection `events`.
 exports.handleEventUpdate = functions.firestore
-  .document('competitions/{competition}/events/{event}').onWrite((change, context) => {
-      console.log("Received change to events collection");
-      const oldData = change.before.data();
-      const newData = change.after.data();
-      console.log(`Old data = ${JSON.stringify(oldData)}`);
-      console.log(`New data = ${JSON.stringify(newData)}`);
+  .document('competitions/{competition}/events/{event}').onUpdate((change, context) => {
+    console.log("Received change to events collection");
+    const oldData = change.before.data();
+    const newData = change.after.data();
+    console.log(`Old data = ${JSON.stringify(oldData)}`);
+    console.log(`New data = ${JSON.stringify(newData)}`);
 
-      // Check for changes in startTime
-      if (oldData["startTime"].toDate().getTime() !== newData["startTime"].toDate().getTime()) {
-        const newDataStartTime = newData["startTime"].toDate();
-        const oldDateStartTime = oldData["startTime"].toDate();
+    // Check for changes in startTime
+    if (oldData["startTime"].toDate().getTime() !== newData["startTime"].toDate().getTime()) {
+      const newDataStartTime = newData["startTime"].toDate();
+      const oldDateStartTime = oldData["startTime"].toDate();
 
-        const message = `The start time for ${newData["name"]} has been changed from ${dateFormat(oldDateStartTime, "hh:MM")} to ${dateFormat(newDataStartTime, "hh:MM")}`;
-        handleTimeUpdate(message, newData);
-      }
-      return 0;
-    });
+      const message = `The start time for ${newData["name"]} has been changed from ${dateFormat(oldDateStartTime, "hh:MM")} to ${dateFormat(newDataStartTime, "hh:MM")}`;
+      handleTimeUpdate(message, newData);
+    }
+    return 0;
+  });
+
+// Listen for any change in collection `competitions`.
+exports.handleCompetitionUpdate = functions.firestore
+  .document('competitions/{competition}').onWrite((change, context) => {
+    var changedData = change.after.data();
+    var savedUsers = changedData["savedUsers"];
+    for (var i = 0; i < savedUsers.length; i++) {
+      console.log('User is ' + savedUsers[i]);
+      db.collection('users').doc(savedUsers[i]).collection('competitions').doc(changedData['id']).update(changedData);
+    }
+    return 0;
+  });
+
+  // Listen for any deletion in collection `competitions`.
+exports.handleCompetitionUpdate = functions.firestore
+.document('competitions/{competition}').onDelete((snap, context) => {
+  var data = snap.data();
+  console.log(data);
+  var savedUsers = data["savedUsers"];
+  for (var i = 0; i < savedUsers.length; i++) {
+    console.log('User is ' + savedUsers[i]);
+    db.collection('users').doc(savedUsers[i]).collection('competitions').doc(data['id']).delete();
+  }
+  return 0;
+});
+
+
