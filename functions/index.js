@@ -85,22 +85,21 @@ exports.handleEventUpdate = functions.firestore
 exports.handleCompetitionUpdate = functions.firestore
   .document('competitions/{competition}').onWrite((change, context) => {
     var changedData = change.after.data();
+    console.log(changedData);
     var savedUsers = changedData["savedUsers"];
     for (var i = 0; i < savedUsers.length; i++) {
-      console.log('User is ' + savedUsers[i]);
       db.collection('users').doc(savedUsers[i]).collection('competitions').doc(changedData['id']).update(changedData);
     }
     return 0;
   });
 
   // Listen for any deletion in collection `competitions`.
-exports.handleCompetitionUpdate = functions.firestore
+exports.handleCompetitionDelete = functions.firestore
 .document('competitions/{competition}').onDelete((snap, context) => {
   var data = snap.data();
   console.log(data);
   var savedUsers = data["savedUsers"];
   for (var i = 0; i < savedUsers.length; i++) {
-    console.log('User is ' + savedUsers[i]);
     db.collection('users').doc(savedUsers[i]).collection('competitions').doc(data['id']).delete();
   }
   return 0;
