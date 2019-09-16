@@ -63,7 +63,7 @@ async function handleTimeUpdate(message, newData) {
 
 // Listen for any change in collection `events`.
 exports.handleEventUpdate = functions.firestore
-  .document('competitions/{competition}/events/{event}').onUpdate((change, context) => {
+  .document('competitions/{competition}/schedules/{schedule}/events/{event}').onUpdate((change, context) => {
     console.log("Received change to events collection");
     const oldData = change.before.data();
     const newData = change.after.data();
@@ -84,6 +84,7 @@ exports.handleEventUpdate = functions.firestore
 // Listen for any change in collection `competitions`.
 exports.handleCompetitionUpdate = functions.firestore
   .document('competitions/{competition}').onWrite((change, context) => {
+    console.log("Received change to a competition.");
     var changedData = change.after.data();
     console.log(changedData);
     var savedUsers = changedData["savedUsers"];
@@ -96,6 +97,7 @@ exports.handleCompetitionUpdate = functions.firestore
   // Listen for any deletion in collection `competitions`.
 exports.handleCompetitionDelete = functions.firestore
 .document('competitions/{competition}').onDelete((snap, context) => {
+  console.log("Received deletion to a competition.");
   var data = snap.data();
   console.log(data);
   var savedUsers = data["savedUsers"];
